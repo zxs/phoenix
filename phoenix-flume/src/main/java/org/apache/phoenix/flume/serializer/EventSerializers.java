@@ -19,7 +19,10 @@ package org.apache.phoenix.flume.serializer;
 
 public enum EventSerializers {
 
-    REGEX(RegexEventSerializer.class.getName());
+    REGEX(RegexEventSerializer.class.getName()),
+    SIMPLE(SimpleEventSerializer.class.getName()),
+    AVRO(AvroEventSerializer.class.getName()),
+    ;
     
     private final String className;
     

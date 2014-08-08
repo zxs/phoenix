@@ -76,4 +76,8 @@ public final class FlumeConstants {
      * The default delimiter for columns and headers
      */
     public static final String DEFAULT_COLUMNS_DELIMITER = ",";
+
+
+    public static final String CONFIG_SCHEMA_KEY = "schemaKey";
+    public static final java.lang.String CONFIG_TABLE_KEY = "tableKey";
 }
