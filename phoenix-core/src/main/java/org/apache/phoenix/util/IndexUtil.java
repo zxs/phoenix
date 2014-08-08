@@ -495,10 +495,10 @@ public class IndexUtil {
                     return cell.getRow();
                 }
 
-                @Override
+                //@Override
                 @Deprecated
                 public int getTagsLengthUnsigned() {
-                    return cell.getTagsLengthUnsigned();
+                    return /*cell.getTagsLengthUnsigned()*/0;
                 }
             };
             // Wrap cell in cell that offsets row key

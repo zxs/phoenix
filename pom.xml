@@ -66,11 +66,12 @@
     <antlr-output.dir>target/generated-sources/antlr3</antlr-output.dir>
     <test.output.tofile>true</test.output.tofile>
 
+    <cdh.version>5.1.0</cdh.version>
     <!-- Hadoop Versions -->
     <hbase-hadoop1.version>0.98.4-hadoop1</hbase-hadoop1.version>
-    <hbase-hadoop2.version>0.98.4-hadoop2</hbase-hadoop2.version>
+    <hbase-hadoop2.version>0.98.1-cdh${cdh.version}</hbase-hadoop2.version>
     <hadoop-one.version>1.0.4</hadoop-one.version>
-    <hadoop-two.version>2.2.0</hadoop-two.version>
+    <hadoop-two.version>2.3.0-cdh${cdh.version}</hadoop-two.version>
 
     <!-- Dependency versions -->
     <commons-cli.version>1.2</commons-cli.version>
@@ -89,7 +90,7 @@
     <sqlline.version>1.1.2</sqlline.version>
     <guava.version>12.0.1</guava.version>
     <jackson.version>1.8.8</jackson.version>
-    <flume.version>1.4.0</flume.version>
+    <flume.version>1.5.0-cdh${cdh.version}</flume.version>
     <findbugs.version>1.3.2</findbugs.version>
     <jline.version>2.11</jline.version>
     <snappy.version>1.1.0.1</snappy.version>
@@ -553,11 +554,12 @@
       if another Hadoop profile is specified with mvn -Dhadoop.profile=foo -->
     <profile>
       <id>hadoop-1</id>
-      <activation>
-        <property>
-          <name>!hadoop.profile</name>
-        </property>
-      </activation>
+        <activation>
+            <property>
+                <name>hadoop.profile</name>
+                <value>1</value>
+            </property>
+        </activation>
       <modules>
         <module>phoenix-hadoop1-compat</module>
       </modules>
@@ -653,12 +655,11 @@
      <!-- Profile for building against Hadoop 2. Activate using: mvn -Dhadoop.profile=2 -->
     <profile>
       <id>hadoop-2</id>
-      <activation>
-        <property>
-          <name>hadoop.profile</name>
-          <value>2</value>
-        </property>
-      </activation>
+        <activation>
+            <property>
+                <name>!hadoop.profile</name>
+            </property>
+        </activation>
       <modules>
         <module>phoenix-hadoop2-compat</module>
       </modules>

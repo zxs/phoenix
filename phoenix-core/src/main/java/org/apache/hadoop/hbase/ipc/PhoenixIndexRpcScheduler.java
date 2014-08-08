@@ -108,9 +108,10 @@ public class PhoenixIndexRpcScheduler extends RpcScheduler {
         return this.delegate.getReplicationQueueLength();
     }
 
-    @Override
+    //@Override
     public int getActiveRpcHandlerCount() {
-        return this.delegate.getActiveRpcHandlerCount() + this.callExecutor.getActiveHandlerCount();
+        return 0;
+       // return this.delegate.getActiveRpcHandlerCount() + this.callExecutor.getActiveHandlerCount();
     }
 
     @VisibleForTesting

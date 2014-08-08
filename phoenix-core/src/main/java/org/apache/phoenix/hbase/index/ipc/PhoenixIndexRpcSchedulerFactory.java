@@ -25,13 +25,13 @@ import org.apache.hadoop.hbase.ipc.PhoenixIndexRpcScheduler;
 import org.apache.hadoop.hbase.ipc.RpcScheduler;
 import org.apache.hadoop.hbase.regionserver.RegionServerServices;
 import org.apache.hadoop.hbase.regionserver.RpcSchedulerFactory;
-import org.apache.hadoop.hbase.regionserver.SimpleRpcSchedulerFactory;
 
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.hbase.regionserver.SimpleRpcSchedulerFactoryAdapter;
 
 /**
  * Factory to create a {@link PhoenixIndexRpcScheduler}. In this package so we can access the
- * {@link SimpleRpcSchedulerFactory}.
+ * {@link SimpleRpcSchedulerFactoryAdapter}.
  */
 public class PhoenixIndexRpcSchedulerFactory implements RpcSchedulerFactory {
 
@@ -61,7 +61,7 @@ public class PhoenixIndexRpcSchedulerFactory implements RpcSchedulerFactory {
         RpcScheduler delegate;
         try {
             // happens in <=0.98.4 where the scheduler factory is not visible
-            delegate = new SimpleRpcSchedulerFactory().create(conf, services);
+            delegate = new SimpleRpcSchedulerFactoryAdapter().create(conf, services);
         } catch (IllegalAccessError e) {
             LOG.fatal(VERSION_TOO_OLD_FOR_INDEX_RPC);
             throw e;
