@@ -194,7 +194,7 @@ public final class PhoenixSink  extends AbstractSink implements Configurable {
             throw new EventDeliveryException("Failed to persist message", e);
         }
         finally {
-            logger.error(String.format("Time taken to process [%s] events was [%s] seconds",events.size(),watch.stop().elapsedTime(TimeUnit.SECONDS)));
+            logger.info(String.format("Time taken to process [%s] events was [%s] seconds",events.size(),watch.stop().elapsedTime(TimeUnit.SECONDS)));
             if( transaction != null ) {
                 transaction.close();
             }

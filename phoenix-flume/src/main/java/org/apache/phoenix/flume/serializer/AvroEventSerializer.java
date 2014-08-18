@@ -164,16 +164,18 @@ public class AvroEventSerializer implements EventSerializer {
         private String jdbcUrl;
         private String avscUrl;
         private String tblName;
-
+        private String schemaName;
 
         private Schema schema;
         private List<ColumnInfo> columnMetadata = null;
+        private PreparedStatement upsertPrepareStatement = null;
 
         public AvroInfo(String jdbcUrl, String tblName, String avscUrl) throws SQLException, IOException {
             this.jdbcUrl = jdbcUrl;
             this.tblName = tblName;
             this.avscUrl = avscUrl;
-
+            int p = getSchema().getNamespace().lastIndexOf(".");
+            schemaName = getSchema().getNamespace().substring(p+1);
             createPhoenixTable();
         }
 
@@ -186,7 +188,7 @@ public class AvroEventSerializer implements EventSerializer {
                 Integer dt = null;
                 String columnName;
                 Connection conn = DriverManager.getConnection(jdbcUrl);
-                ResultSet rs = conn.getMetaData().getColumns("", null, StringUtil.escapeLike(tblName), null);
+                ResultSet rs = conn.getMetaData().getColumns("", StringUtil.escapeLike(schemaName), StringUtil.escapeLike(tblName), null);
                 while (rs.next()) {
 //                    cf = rs.getString(QueryUtil.COLUMN_FAMILY_POSITION);
                     cq = rs.getString(QueryUtil.COLUMN_NAME_POSITION);
@@ -198,7 +200,8 @@ public class AvroEventSerializer implements EventSerializer {
 //                        columnName = SchemaUtil.getColumnDisplayName(cf, cq);
 //                    }
                     columnName = SchemaUtil.getColumnDisplayName(null, cq);
-                    logger.info("tblName={}, columnName={}, columnType="+dt, tblName, columnName );
+                    logger.info("schemaName={}, tblName={}, columnName={}, columnType={}",
+                            new Object[]{schemaName, tblName, columnName, dt} );
                     columnMetadata.add(new ColumnInfo(columnName, dt));
                 }
                 rs.close();
@@ -220,9 +223,12 @@ public class AvroEventSerializer implements EventSerializer {
         }
 
         public PreparedStatement getUpsertStatement(Connection conn) throws SQLException {
-            String upsertSQL = QueryUtil.constructUpsertStatement("\""+tblName+"\"", getColumnMetadata());
-            logger.debug("upsertSQL=\n---\n {} \n---", upsertSQL);
-            return conn.prepareStatement(upsertSQL);
+            if(upsertPrepareStatement==null) {
+                String upsertSQL = QueryUtil.constructUpsertStatement("\"" +schemaName+"\".\""+ tblName + "\"", getColumnMetadata());
+                logger.debug("upsertSQL=\n---\n {} \n---", upsertSQL);
+                upsertPrepareStatement = conn.prepareStatement(upsertSQL);
+            }
+            return upsertPrepareStatement;
         }
 
         public void handleSchemaChange(String newAvscUrl) throws SQLException, IOException {
@@ -257,7 +263,7 @@ public class AvroEventSerializer implements EventSerializer {
 
             }
             //
-            StringBuffer sb = new StringBuffer("CREATE TABLE IF NOT EXISTS \"").append(tblName).append("\"(");
+            StringBuffer sb = new StringBuffer("CREATE TABLE IF NOT EXISTS \"").append(schemaName).append("\".\"").append(tblName).append("\"(");
             Schema.Field f = null;
             boolean isPk = false;
             String qFn = null;
@@ -290,7 +296,7 @@ public class AvroEventSerializer implements EventSerializer {
 
         private void dropPhoenixTable() throws SQLException, IOException {
             Connection conn = DriverManager.getConnection(jdbcUrl);
-            StringBuffer sb = new StringBuffer("DROP TABLE IF EXISTS \"").append(tblName).append("\"");
+            StringBuffer sb = new StringBuffer("DROP TABLE IF EXISTS \"").append(schemaName).append("\".\"").append(tblName).append("\"");
             logger.info("- To drop phoenix old-table sql \n ---\n {} \n---", sb);
 
             conn.createStatement().execute(sb.toString());
@@ -341,7 +347,7 @@ public class AvroEventSerializer implements EventSerializer {
                     break;
                 case STRING:
                     if(isPk) {
-                        res = "CHAR("+ maxLen+")";
+                        res = "VARCHAR("+ maxLen+")";
                     } else {
                         res = "VARCHAR";
                     }
