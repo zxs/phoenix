@@ -17,10 +17,12 @@
  */
 package org.apache.phoenix.flume;
 
+import java.nio.ByteBuffer;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.Random;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.phoenix.util.DateUtil;
 
 public enum DefaultKeyGenerator implements KeyGenerator {
@@ -31,7 +33,28 @@ public enum DefaultKeyGenerator implements KeyGenerator {
         public String generate() {
            return String.valueOf(java.util.UUID.randomUUID());
         }
-         
+
+        @Override
+        public int length() {
+            return 36;
+        }
+
+    },
+    BASE64  {
+
+        @Override
+        public String generate() {
+            java.util.UUID uuid = java.util.UUID.randomUUID();
+            ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+            bb.putLong(uuid.getMostSignificantBits());
+            bb.putLong(uuid.getLeastSignificantBits());
+            return B64.encodeBase64URLSafeString(bb.array());
+        }
+        @Override
+        public int length() {
+            return 22;
+        }
+
     },
     TIMESTAMP {
 
@@ -40,7 +63,11 @@ public enum DefaultKeyGenerator implements KeyGenerator {
             java.sql.Timestamp ts = new Timestamp(System.currentTimeMillis());
             return DateUtil.DEFAULT_DATE_FORMATTER.format(ts);
         }
-        
+
+        @Override
+        public int length() {
+            return 19;
+        }
     },
     DATE {
         
@@ -48,7 +75,12 @@ public enum DefaultKeyGenerator implements KeyGenerator {
         public String generate() {
             Date dt =  new Date(System.currentTimeMillis());
             return DateUtil.DEFAULT_DATE_FORMATTER.format(dt);
-        } 
+        }
+
+        @Override
+        public int length() {
+            return 19;
+        }
     },
     RANDOM {
 
@@ -56,7 +88,11 @@ public enum DefaultKeyGenerator implements KeyGenerator {
         public String generate() {
             return String.valueOf(new Random().nextLong());
         }
-        
+
+        @Override
+        public int length() {
+            return 20;
+        }
     },
     NANOTIMESTAMP {
 
@@ -64,6 +100,12 @@ public enum DefaultKeyGenerator implements KeyGenerator {
         public String generate() {
             return String.valueOf(System.nanoTime());
         }
-        
+
+        @Override
+        public int length() {
+            return 20;
+        }
     };
+
+    private static Base64 B64 = new Base64();
 }

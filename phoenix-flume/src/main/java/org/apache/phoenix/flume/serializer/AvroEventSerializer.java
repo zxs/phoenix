@@ -2,6 +2,7 @@ package org.apache.phoenix.flume.serializer;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import com.google.common.base.Throwables;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
@@ -14,7 +15,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.phoenix.flume.DefaultKeyGenerator;
 import org.apache.phoenix.flume.FlumeConstants;
+import org.apache.phoenix.flume.KeyGenerator;
 import org.apache.phoenix.schema.PDataType;
 import org.apache.phoenix.util.ColumnInfo;
 import org.apache.phoenix.util.QueryUtil;
@@ -40,7 +43,8 @@ public class AvroEventSerializer implements EventSerializer {
 
     private String schemaKey;
     private String tableKey;
-
+    private String appendRowkey;
+    private KeyGenerator keyGenerator;
 
     @Override
     public void configure(Context context) {
@@ -49,12 +53,22 @@ public class AvroEventSerializer implements EventSerializer {
         this.batchSize = context.getInteger(FlumeConstants.CONFIG_BATCHSIZE, FlumeConstants.DEFAULT_BATCH_SIZE);
         this.schemaKey = context.getString(FlumeConstants.CONFIG_SCHEMA_KEY);
         this.tableKey = context.getString(FlumeConstants.CONFIG_TABLE_KEY);
+        this.appendRowkey = context.getString(FlumeConstants.CONFIG_APPEND_ROWKEY);
 
         if (!Strings.isNullOrEmpty(zookeeperQuorum)) {
             this.jdbcUrl = QueryUtil.getUrl(zookeeperQuorum);
         }
         if (!Strings.isNullOrEmpty(ipJdbcURL)) {
             this.jdbcUrl = ipJdbcURL;
+        }
+
+        if(!Strings.isNullOrEmpty(appendRowkey)) {
+            try {
+                keyGenerator =  DefaultKeyGenerator.valueOf(appendRowkey.toUpperCase());
+            } catch(IllegalArgumentException iae) {
+                logger.error("An invalid key generator {} was specified in configuration file. Specify one of {}",appendRowkey,DefaultKeyGenerator.values());
+                Throwables.propagate(iae);
+            }
         }
         Preconditions.checkNotNull(this.schemaKey,"Schema Key on Event Headers cannot be empty, please specify in the configuration file");
         Preconditions.checkNotNull(this.tableKey,"Table Key on Event Headers cannot be empty, please specify in the configuration file");
@@ -105,7 +119,7 @@ public class AvroEventSerializer implements EventSerializer {
                     avroInfo = null; // reset to null , for create new one
                 }
                 if (avroInfo == null) {
-                    avroInfo = new AvroInfo(jdbcUrl, table, avscUrl);
+                    avroInfo = new AvroInfo(jdbcUrl, table, avscUrl, keyGenerator);
                     avroInfoMap.put(table, avroInfo);
                 }
 
@@ -116,8 +130,8 @@ public class AvroEventSerializer implements EventSerializer {
                 ColumnInfo cInfo = null;
                 int sqlType;
                 String value; Object tmp = null;
-                for (int i = 0, size = avroInfo.getColumnMetadata().size();
-                     i < size; i++) {
+                int  size = avroInfo.getColumnMetadata().size();
+                for (int i = 0; i < (keyGenerator!=null?size-1:size); i++) {
                     cInfo = avroInfo.getColumnMetadata().get(i);
                     if (cInfo == null) {
                         continue;
@@ -132,6 +146,9 @@ public class AvroEventSerializer implements EventSerializer {
                     } else {
                         pstat.setNull(index++, sqlType);
                     }
+                }
+                if(keyGenerator!=null) {
+                    pstat.setString(index, keyGenerator.generate());
                 }
                 pstat.execute();
                 //pstat.addBatch();
@@ -166,14 +183,17 @@ public class AvroEventSerializer implements EventSerializer {
         private String tblName;
         private String schemaName;
 
+        private KeyGenerator keyGenerator;
+
         private Schema schema;
         private List<ColumnInfo> columnMetadata = null;
         private PreparedStatement upsertPrepareStatement = null;
 
-        public AvroInfo(String jdbcUrl, String tblName, String avscUrl) throws SQLException, IOException {
+        public AvroInfo(String jdbcUrl, String tblName, String avscUrl, KeyGenerator keyGenerator) throws SQLException, IOException {
             this.jdbcUrl = jdbcUrl;
             this.tblName = tblName;
             this.avscUrl = avscUrl;
+            this.keyGenerator = keyGenerator;
             int p = getSchema().getNamespace().lastIndexOf(".");
             schemaName = getSchema().getNamespace().substring(p+1);
             createPhoenixTable();
@@ -243,24 +263,26 @@ public class AvroEventSerializer implements EventSerializer {
             conn.setAutoCommit(true);
             List<Schema.Field> fs = getSchema().getFields();
             String pkStr = getSchema().getProp("phoenix.primaryKeys");
-            if(pkStr==null) {
-                throw new IllegalArgumentException(" The Schema[" + getSchema().getName() + "] MUST BE HAS the property[phoenix.primaryKeys]") ;
+            if(pkStr==null && keyGenerator==null) {
+                throw new IllegalArgumentException(" The Schema[" + getSchema().getName() + "] MUST BE HAS the property[phoenix.primaryKeys]" +
+                        ", OR config the paramater <appendRowkey> ") ;
             }
             String tableOptions = getSchema().getProp("phoenix.tableOptions");
             // NORM. PK
             String[] pAy = null;
             List<String> pks = new ArrayList<String>();
             StringBuffer primaryKeys = new StringBuffer();
-            for(String p : Arrays.asList(pkStr.split(","))) {
-                pAy = p.trim().split(" ");
-                pks.add(pAy[0].trim());
-                primaryKeys.append(",\"").append(pAy[0].trim()).append("\"");
-                if(pAy.length>1) {
-                    primaryKeys.append(" ").append(pAy[1].trim().toUpperCase());
-                } else {
-                    primaryKeys.append(" ASC");
+            if(pkStr!=null) {
+                for (String p : Arrays.asList(pkStr.split(","))) {
+                    pAy = p.trim().split(" ");
+                    pks.add(pAy[0].trim());
+                    primaryKeys.append(",\"").append(pAy[0].trim()).append("\"");
+                    if (pAy.length > 1) {
+                        primaryKeys.append(" ").append(pAy[1].trim().toUpperCase());
+                    } else {
+                        primaryKeys.append(" ASC");
+                    }
                 }
-
             }
             //
             StringBuffer sb = new StringBuffer("CREATE TABLE IF NOT EXISTS \"").append(schemaName).append("\".\"").append(tblName).append("\"(");
@@ -277,6 +299,12 @@ public class AvroEventSerializer implements EventSerializer {
                 if(i!=size-1) {
                     sb.append(",");
                 }
+            }
+            if(keyGenerator!=null) {
+                String ark = "_ark" + new Random().nextInt(1000);
+                primaryKeys.append(",\"").append(ark).append("\"");
+                sb.append(",\"").append(ark).append("\"").append(" VARCHAR(");
+                sb.append(keyGenerator.length()).append(") NOT NULL ");
             }
             sb.append(" CONSTRAINT \"").append(tblName).append("_pk\" PRIMARY KEY (")
                     .append(primaryKeys.substring(1)).append(")");

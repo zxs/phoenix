@@ -80,4 +80,5 @@ public final class FlumeConstants {
 
     public static final String CONFIG_SCHEMA_KEY = "schemaKey";
     public static final java.lang.String CONFIG_TABLE_KEY = "tableKey";
+    public static final java.lang.String CONFIG_APPEND_ROWKEY = "appendRowkey";
 }
