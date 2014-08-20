@@ -19,6 +19,7 @@ package org.apache.phoenix.query;
 
 import static org.apache.phoenix.jdbc.PhoenixDatabaseMetaData.INDEX_STATE_BYTES;
 
+import java.lang.reflect.Constructor;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
@@ -138,9 +139,22 @@ public class ConnectionlessQueryServicesImpl extends DelegateQueryServices imple
 
     @Override
     public List<HRegionLocation> getAllTableRegions(byte[] tableName) throws SQLException {
+        // HBase hides the ServerName constructors and provides static valueOf helper methods
+        // for obtaining ServerName objects instead. However some commercial Hadoop distributions
+        // have patched their HBase to remove the valueOf static methods, leaving no common way
+        // to construct ServerNames except by way of reflection.
+        ServerName fakeServerName;
+        try {
+          Constructor<ServerName> c = ServerName.class.getDeclaredConstructor(String.class,
+              int.class, long.class);
+          c.setAccessible(true);
+          fakeServerName = c.newInstance("localhost", HConstants.DEFAULT_REGIONSERVER_PORT, 0L);
+        } catch (Exception e) {
+          throw new SQLException(e);
+        }
         return Collections.singletonList(new HRegionLocation(
             new HRegionInfo(TableName.valueOf(tableName), HConstants.EMPTY_START_ROW, HConstants.EMPTY_END_ROW),
-            	ServerName.valueOf("localhost", HConstants.DEFAULT_REGIONSERVER_PORT,0), -1));
+                fakeServerName, -1));
     }
 
     @Override
