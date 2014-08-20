@@ -148,7 +148,11 @@ public class AvroEventSerializer implements EventSerializer {
                     }
                 }
                 if(keyGenerator!=null) {
-                    pstat.setString(index, keyGenerator.generate());
+                    if(keyGenerator == DefaultKeyGenerator.EVENT_HEAD_KEY) {
+                        pstat.setString(index, event.getHeaders().get(keyGenerator.generate()));
+                    } else {
+                        pstat.setString(index, keyGenerator.generate());
+                    }
                 }
                 pstat.execute();
                 //pstat.addBatch();
@@ -301,7 +305,12 @@ public class AvroEventSerializer implements EventSerializer {
                 }
             }
             if(keyGenerator!=null) {
-                String ark = "_ark" + new Random().nextInt(1000);
+                String ark = null;
+                if(keyGenerator == DefaultKeyGenerator.EVENT_HEAD_KEY) {
+                    ark = keyGenerator.generate();
+                } else {
+                    ark = "_ark" + new Random().nextInt(1000);
+                }
                 primaryKeys.append(",\"").append(ark).append("\"");
                 sb.append(",\"").append(ark).append("\"").append(" VARCHAR(");
                 sb.append(keyGenerator.length()).append(") NOT NULL ");

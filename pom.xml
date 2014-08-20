@@ -48,6 +48,15 @@
     </repository>
   </repositories>
 
+  <distributionManagement>
+      <snapshotRepository>
+          <id>ourplat.nexus</id>
+          <layout>default</layout>
+          <url>http://maven.ourplat.net/content/repositories/thirdparty-snapshots/</url>
+      </snapshotRepository>
+  </distributionManagement>
+
+
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>

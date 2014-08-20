@@ -26,9 +26,18 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.phoenix.util.DateUtil;
 
 public enum DefaultKeyGenerator implements KeyGenerator {
+    EVENT_HEAD_KEY {
+        @Override
+        public String generate() {
+            return "___ID___";
+        }
 
+        @Override
+        public int length() {
+            return 22;
+        }
+    },
     UUID  {
-
         @Override
         public String generate() {
            return String.valueOf(java.util.UUID.randomUUID());
