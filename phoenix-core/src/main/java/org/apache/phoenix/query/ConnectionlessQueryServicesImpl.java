@@ -19,7 +19,6 @@ package org.apache.phoenix.query;
 
 import static org.apache.phoenix.jdbc.PhoenixDatabaseMetaData.INDEX_STATE_BYTES;
 
-import java.lang.reflect.Constructor;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
@@ -36,6 +35,7 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Mutation;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
+import org.apache.hadoop.hbase.util.Addressing;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.phoenix.compile.MutationPlan;
@@ -84,6 +84,8 @@ import com.google.common.collect.Maps;
  * @since 0.1
  */
 public class ConnectionlessQueryServicesImpl extends DelegateQueryServices implements ConnectionQueryServices  {
+    private static ServerName SERVER_NAME = ServerName.parseServerName(HConstants.LOCALHOST + Addressing.HOSTNAME_PORT_SEPARATOR + HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT);
+    
     private PMetaData metaData;
     private final Map<SequenceKey, Long> sequenceMap = Maps.newHashMap();
     private KeyValueBuilder kvBuilder;
@@ -139,22 +141,9 @@ public class ConnectionlessQueryServicesImpl extends DelegateQueryServices imple
 
     @Override
     public List<HRegionLocation> getAllTableRegions(byte[] tableName) throws SQLException {
-        // HBase hides the ServerName constructors and provides static valueOf helper methods
-        // for obtaining ServerName objects instead. However some commercial Hadoop distributions
-        // have patched their HBase to remove the valueOf static methods, leaving no common way
-        // to construct ServerNames except by way of reflection.
-        ServerName fakeServerName;
-        try {
-          Constructor<ServerName> c = ServerName.class.getDeclaredConstructor(String.class,
-              int.class, long.class);
-          c.setAccessible(true);
-          fakeServerName = c.newInstance("localhost", HConstants.DEFAULT_REGIONSERVER_PORT, 0L);
-        } catch (Exception e) {
-          throw new SQLException(e);
-        }
         return Collections.singletonList(new HRegionLocation(
             new HRegionInfo(TableName.valueOf(tableName), HConstants.EMPTY_START_ROW, HConstants.EMPTY_END_ROW),
-                fakeServerName, -1));
+            SERVER_NAME, -1));
     }
 
     @Override
