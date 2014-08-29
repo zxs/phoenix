@@ -145,7 +145,7 @@ public class ConnectionlessQueryServicesImpl extends DelegateQueryServices imple
     public List<HRegionLocation> getAllTableRegions(byte[] tableName) throws SQLException {
         return Collections.singletonList(new HRegionLocation(
             new HRegionInfo(TableName.valueOf(tableName), HConstants.EMPTY_START_ROW, HConstants.EMPTY_END_ROW),
-            	ServerName.valueOf("localhost", HConstants.DEFAULT_REGIONSERVER_PORT,0), -1));
+            	new ServerName("localhost", HConstants.DEFAULT_REGIONSERVER_PORT,0), -1));
     }
 
     @Override
