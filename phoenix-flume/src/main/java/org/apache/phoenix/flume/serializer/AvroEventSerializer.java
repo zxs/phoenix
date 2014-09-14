@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.sql.*;
 import java.util.*;
+import java.util.Date;
 
 import static org.apache.phoenix.util.PhoenixRuntime.UPSERT_BATCH_SIZE_ATTRIB;
 
@@ -45,7 +46,7 @@ public class AvroEventSerializer implements EventSerializer {
     private String tableKey;
     private String appendRowkey;
     private KeyGenerator keyGenerator;
-
+    private boolean insertUpdateTime = false;
     @Override
     public void configure(Context context) {
         final String zookeeperQuorum = context.getString(FlumeConstants.CONFIG_ZK_QUORUM);
@@ -54,6 +55,7 @@ public class AvroEventSerializer implements EventSerializer {
         this.schemaKey = context.getString(FlumeConstants.CONFIG_SCHEMA_KEY);
         this.tableKey = context.getString(FlumeConstants.CONFIG_TABLE_KEY);
         this.appendRowkey = context.getString(FlumeConstants.CONFIG_APPEND_ROWKEY);
+        this.insertUpdateTime = context.getBoolean(FlumeConstants.CONFIG_INSERT_UPDATE_TIME, false);
 
         if (!Strings.isNullOrEmpty(zookeeperQuorum)) {
             this.jdbcUrl = QueryUtil.getUrl(zookeeperQuorum);
@@ -119,7 +121,7 @@ public class AvroEventSerializer implements EventSerializer {
                     avroInfo = null; // reset to null , for create new one
                 }
                 if (avroInfo == null) {
-                    avroInfo = new AvroInfo(jdbcUrl, table, avscUrl, keyGenerator);
+                    avroInfo = new AvroInfo(jdbcUrl, table, avscUrl, keyGenerator, insertUpdateTime);
                     avroInfoMap.put(table, avroInfo);
                 }
 
@@ -129,18 +131,23 @@ public class AvroEventSerializer implements EventSerializer {
                 int index = 1;
                 ColumnInfo cInfo = null;
                 int sqlType;
-                String value; Object tmp = null;
+                String value;
+                Object upsertValue = null, tmp = null;
                 int  size = avroInfo.getColumnMetadata().size();
                 for (int i = 0; i < (keyGenerator!=null?size-1:size); i++) {
                     cInfo = avroInfo.getColumnMetadata().get(i);
                     if (cInfo == null) {
                         continue;
                     }
-                    tmp = rec.get(cInfo.getColumnName());
-                    value = tmp!=null?tmp.toString():null;
                     sqlType = cInfo.getSqlType();
-                    Object upsertValue = PDataType.fromTypeId(sqlType).toObject(value);
-                    logger.debug("set c:{}, v:{}, p:{} t:{} , uv:{}", new Object[]{cInfo.getColumnName(),value, index, sqlType,  upsertValue});
+                    if(cInfo.getColumnName().equalsIgnoreCase(FlumeConstants.UPDATE_TIME)) {
+                        upsertValue = Long.valueOf(new Date().getTime());
+                    } else {
+                        tmp = rec.get(cInfo.getColumnName());
+                        value = tmp != null ? tmp.toString() : null;
+                        upsertValue = PDataType.fromTypeId(sqlType).toObject(value);
+                    }
+                    logger.debug("set c:{}, p:{}, t:{}, uv:{}", new Object[]{cInfo.getColumnName(),index, sqlType,  upsertValue});
                     if (upsertValue != null) {
                         pstat.setObject(index++, upsertValue, sqlType);
                     } else {
@@ -186,18 +193,19 @@ public class AvroEventSerializer implements EventSerializer {
         private String avscUrl;
         private String tblName;
         private String schemaName;
-
+        private boolean insertUpdateTime = false;
         private KeyGenerator keyGenerator;
 
         private Schema schema;
         private List<ColumnInfo> columnMetadata = null;
         private PreparedStatement upsertPrepareStatement = null;
 
-        public AvroInfo(String jdbcUrl, String tblName, String avscUrl, KeyGenerator keyGenerator) throws SQLException, IOException {
+        public AvroInfo(String jdbcUrl, String tblName, String avscUrl, KeyGenerator keyGenerator, boolean insertUpdateTime) throws SQLException, IOException {
             this.jdbcUrl = jdbcUrl;
             this.tblName = tblName;
             this.avscUrl = avscUrl;
             this.keyGenerator = keyGenerator;
+            this.insertUpdateTime = insertUpdateTime;
             int p = getSchema().getNamespace().lastIndexOf(".");
             schemaName = getSchema().getNamespace().substring(p+1);
             createPhoenixTable();
@@ -292,9 +300,13 @@ public class AvroEventSerializer implements EventSerializer {
             StringBuffer sb = new StringBuffer("CREATE TABLE IF NOT EXISTS \"").append(schemaName).append("\".\"").append(tblName).append("\"(");
             Schema.Field f = null;
             boolean isPk = false;
+            boolean hasUpdateTimeField = false;
             String qFn = null;
             for(int i=0,size=fs.size();i<size; i++) {
                 f = fs.get(i);
+                if(f.name().equalsIgnoreCase(FlumeConstants.UPDATE_TIME)) {
+                    hasUpdateTimeField = true;
+                }
                 isPk = pks.contains(f.name());
                 sb.append("\"").append(f.name()).append("\" ").append(avro2phoenix(f, isPk));
                 if(isPk) {
@@ -303,6 +315,9 @@ public class AvroEventSerializer implements EventSerializer {
                 if(i!=size-1) {
                     sb.append(",");
                 }
+            }
+            if(!hasUpdateTimeField) {
+                sb.append(",\"").append(FlumeConstants.UPDATE_TIME).append("\" BIGINT");
             }
             if(keyGenerator!=null) {
                 String ark = null;
