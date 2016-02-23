@@ -26,7 +26,7 @@
   <parent>
     <groupId>org.apache.phoenix</groupId>
     <artifactId>phoenix</artifactId>
-    <version>4.6.1-HBase-1.0-SNAPSHOT</version>
+    <version>4.6.1-cdh5.5.2</version>
   </parent>
   <artifactId>phoenix-flume</artifactId>
   <name>Phoenix - Flume</name>
@@ -93,7 +93,6 @@
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-testing-util</artifactId>
-      <version>${hbase.version}</version>
       <scope>test</scope>
       <optional>true</optional>
       <exclusions>
@@ -106,7 +105,6 @@
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-it</artifactId>
-      <version>${hbase.version}</version>
       <type>test-jar</type>
       <scope>test</scope>
       <exclusions>
@@ -119,41 +117,34 @@
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-common</artifactId>
-      <version>${hbase.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-protocol</artifactId>
-      <version>${hbase.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-client</artifactId>
-      <version>${hbase.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-hadoop-compat</artifactId>
-      <version>${hbase.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-hadoop-compat</artifactId>
-      <version>${hbase.version}</version>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-hadoop2-compat</artifactId>
-      <version>${hbase.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-hadoop2-compat</artifactId>
-      <version>${hbase.version}</version>
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>

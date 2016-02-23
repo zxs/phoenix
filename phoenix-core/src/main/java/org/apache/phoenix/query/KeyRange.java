@@ -87,12 +87,18 @@ public class KeyRange implements Writable {
                     .compare(o1.getLowerRange(), o2.getLowerRange(), Bytes.BYTES_COMPARATOR)
                     // we want o1 lower inclusive to come before o2 lower inclusive, but
                     // false comes before true, so we have to negate
+                            // compare(ZZ) Deprecated since 16.0
                     .compareFalseFirst(o2.isLowerInclusive(), o1.isLowerInclusive())
+                    //.compare(o2.isLowerInclusive(), o1.isLowerInclusive())
                     // for the same lower bounding, we want a finite upper bound to
                     // be ordered before an infinite upper bound
+                            // compare(ZZ) Deprecated since 16.0
                     .compareFalseFirst(o1.upperUnbound(), o2.upperUnbound())
+                    //.compare(o1.upperUnbound(), o2.upperUnbound())
                     .compare(o1.getUpperRange(), o2.getUpperRange(), Bytes.BYTES_COMPARATOR)
+                            // compare(ZZ) Deprecated since 16.0
                     .compareFalseFirst(o2.isUpperInclusive(), o1.isUpperInclusive())
+                    //.compare(o2.isUpperInclusive(), o1.isUpperInclusive())
                     .result();
         }
     };

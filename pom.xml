@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.phoenix</groupId>
   <artifactId>phoenix</artifactId>
-  <version>4.6.1-HBase-1.0-SNAPSHOT</version>
+  <version>4.6.1-cdh5.5.2</version>
   <packaging>pom</packaging>
   <name>Apache Phoenix</name>
   <description>A SQL layer over HBase</description>
@@ -80,17 +80,18 @@
     <top.dir>${project.basedir}</top.dir>
 
     <!-- Hadoop Versions -->
-    <hbase.version>1.0.1</hbase.version>
-    <hadoop-two.version>2.5.1</hadoop-two.version>
+    <ver.cdh>5.5.2</ver.cdh>
+    <hbase.version>1.0.0-cdh${ver.cdh}</hbase.version>
+    <hadoop-two.version>2.6.0-cdh${ver.cdh}</hadoop-two.version>
 
     <!-- Dependency versions -->
     <commons-cli.version>1.2</commons-cli.version>
     <hadoop.version>2.5.1</hadoop.version>
-    <pig.version>0.13.0</pig.version>
+    <pig.version>0.12.0-cdh${ver.cdh}</pig.version>
     <jackson.version>1.8.8</jackson.version>
     <antlr.version>3.5</antlr.version>
     <log4j.version>1.2.17</log4j.version>
-    <slf4j.version>1.6.4</slf4j.version>
+    <slf4j.version>1.7.5</slf4j.version>
     <protobuf-java.version>2.5.0</protobuf-java.version>
     <commons-configuration.version>1.6</commons-configuration.version>
     <commons-io.version>2.1</commons-io.version>
@@ -100,7 +101,7 @@
     <sqlline.version>1.1.8</sqlline.version>
     <guava.version>12.0.1</guava.version>
     <jackson.version>1.8.8</jackson.version>
-    <flume.version>1.4.0</flume.version>
+    <flume.version>1.6.0-cdh${ver.cdh}</flume.version>
     <findbugs.version>1.3.2</findbugs.version>
     <jline.version>2.11</jline.version>
     <snappy.version>0.3</snappy.version>
@@ -195,6 +196,10 @@
 	          <exclude>dev/phoenix.importorder</exclude>
               <exclude>dev/release_files/**</exclude>
               <exclude>**/target/**</exclude>
+              <exclude>**/resources/*.Driver</exclude>
+              <exclude>**/META-INF/**</exclude>
+              <exclude>**/*.properties</exclude>
+              <exclude>**/*.proto</exclude>
               <exclude>**/*.versionsBackup</exclude>
               <!-- properties files need no license -->
               <exclude>**/*.properties</exclude>
@@ -212,8 +217,10 @@
               <exclude>.classpath</exclude>
               <exclude>.settings/**</exclude>
               <exclude>**/java.sql.Driver</exclude>
-              <!-- exclude protobuf files -->
-              <exclude>**/generated/**</exclude>
+              <exclude>**/*Protos.java</exclude>
+              <exclude>**/java.sql.Driver</exclude>
+              <exclude>**/csd/**</exclude>
+              <exclude>**/parcel/**</exclude>
               <!-- exclude pre-commit testing work directory -->
               <exclude>**/patchprocess/**</exclude>
             </excludes>
@@ -323,7 +330,7 @@
                 <goal>build-classpath</goal>
               </goals>
               <configuration>
-                <outputFile>${project.build.directory}/classes/mrapp-generated-classpath
+                <outputFile>${project.build.directory}/classes/${project.artifactId}-mrapp-generated-classpath
                 </outputFile>
               </configuration>
             </execution>
@@ -486,6 +493,10 @@
             <groupId>org.jruby</groupId>
             <artifactId>jruby-complete</artifactId>
           </exclusion>
+          <exclusion>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-core</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -498,6 +509,10 @@
           <exclusion>
             <groupId>org.jruby</groupId>
             <artifactId>jruby-complete</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-core</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -523,12 +538,31 @@
       </dependency>
       <dependency>
         <groupId>org.apache.hbase</groupId>
+        <artifactId>hbase-server</artifactId>
+        <version>${hbase.version}</version>
+        <type>test-jar</type>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hbase</groupId>
         <artifactId>hbase-hadoop-compat</artifactId>
         <version>${hbase.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.hbase</groupId>
         <artifactId>hbase-hadoop-compat</artifactId>
+        <version>${hbase.version}</version>
+        <type>test-jar</type>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hbase</groupId>
+        <artifactId>hbase-hadoop2-compat</artifactId>
+        <version>${hbase.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hbase</groupId>
+        <artifactId>hbase-hadoop2-compat</artifactId>
         <version>${hbase.version}</version>
         <type>test-jar</type>
         <scope>test</scope>
@@ -564,12 +598,18 @@
         <scope>test</scope>
       </dependency>
 
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-client</artifactId>
+        <version>${hadoop-two.version}</version>
+      </dependency>
+
       <!-- General Dependencies -->
       <dependency>
         <groupId>org.apache.pig</groupId>
         <artifactId>pig</artifactId>
         <version>${pig.version}</version>
-        <classifier>h2</classifier>
+        <!--<classifier>h2</classifier>-->
         <exclusions>
           <exclusion>
             <groupId>org.xerial.snappy</groupId>
@@ -623,6 +663,10 @@
             <groupId>org.xerial.snappy</groupId>
             <artifactId>snappy-java</artifactId>
           </exclusion>
+          <exclusion>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-core</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -668,6 +712,7 @@
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>
         <version>${junit.version}</version>
+        <scope>test</scope>
       </dependency>
       <dependency>
         <groupId>org.mockito</groupId>
@@ -734,6 +779,38 @@
   </dependencyManagement>
 
   <profiles>
+    <profile>
+      <id>ourplat-repo</id>
+      <distributionManagement>
+        <repository>
+          <id>ourplat.nexus</id>
+          <layout>default</layout>
+          <url>http://maven.ourplat.net/content/repositories/thirdparty/</url>
+        </repository>
+        <snapshotRepository>
+          <id>ourplat.nexus</id>
+          <layout>default</layout>
+          <url>http://maven.ourplat.net/content/repositories/thirdparty-snapshots/</url>
+        </snapshotRepository>
+      </distributionManagement>
+    </profile>
+
+    <profile>
+      <id>artifact-repo</id>
+      <distributionManagement>
+        <repository>
+          <id>jtzh65</id>
+          <name>jtzh65-releases</name>
+          <url>http://jtzh65:58200/artifactory/ext-release-local</url>
+        </repository>
+        <snapshotRepository>
+          <id>jtzh65</id>
+          <name>jtzh65-snapshots</name>
+          <url>http://jtzh65:58200/artifactory/ext-snapshot-local</url>
+        </snapshotRepository>
+      </distributionManagement>
+    </profile>
+
     <!-- this profile should be activated for release builds -->
     <profile>
       <id>release</id>
